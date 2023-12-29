@@ -16,9 +16,9 @@ pub async fn get_event(pool: web::Data<sqlx::MySqlPool>, req: HttpRequest) -> im
                 id: row.get("id"),
                 relation_id: row.get("relation_id"),
                 reference_id: row.get("reference_id"),
-                tags: row.get::<String, _>("tags").clone(),
-                detail: row.get::<String, _>("detail").clone(),
-                time: row.get::<String, _>("time").clone(),
+                tags: row.get::<String, _>("tags"),
+                detail: row.get::<String, _>("detail"),
+                time: row.get::<String, _>("time"),
             }).collect();
             HttpResponse::Ok().json(events)
         },
