@@ -1,4 +1,5 @@
 mod event;
+mod condition_builder;
 
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use dotenv::dotenv;
@@ -61,6 +62,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(AppState { db: pool.clone() }))
             .route("/", web::get().to(index))
             .route("/crate-api/event", web::get().to(event::get_event))
+            .route("/crate-api/event/test", web::get().to(event::retrieve_event))
     })
     .bind((server_address, server_port))?
     .run()
