@@ -6,7 +6,14 @@ use serde_json::json;
 use sqlx::prelude::*;
 
 use crate::AppState;
+use crate::condition_builder::array_contain_builder;
 use crate::condition_builder::equal_builder;
+use crate::condition_builder::greater_builder;
+use crate::condition_builder::in_builder;
+use crate::condition_builder::lesser_builder;
+use crate::condition_builder::like_builder;
+use crate::condition_builder::object_contain_builder;
+use crate::condition_builder::object_like_builder;
 
 const COLUMNS: [&str; 6] = ["id", "relation_id", "reference_id", "json_unquote(tags) tags", "json_unquote(detail) detail", "date_format(time, '%Y-%m-%d %H:%i:%s') time"];
 
@@ -27,22 +34,7 @@ struct Event {
     _reference_id: String,
 }
 
-// pub async fn test_event(app_data: web::Data<AppState>, req: HttpRequest) -> impl Responder {
-//     let result = retrieve(
-//         app_data.db.clone(),
-//         "events".to_string(),
-//         0,
-//         10,
-//         HashMap::new()
-//     ).await;
-//     let body = match result {
-//         Ok(data) => serde_json::to_string(&data).unwrap_or_else(|_| String::from("Error converting to JSON")),
-//         Err(e) => format!("Error: {}", e),
-//     };
-//     HttpResponse::Ok().body(body)
-// }
-
-pub async fn retrieve_event(app_data: web::Data<AppState>, req: HttpRequest) -> impl Responder {
+pub async fn endpoint_event_get(app_data: web::Data<AppState>, req: HttpRequest) -> impl Responder {
     let query_string = req.query_string();
     let query: HashMap<String, String> = serde_qs::from_str(query_string).unwrap();
     if !query.contains_key("option") {
@@ -66,61 +58,58 @@ async fn filter_event_default(app_data: web::Data<AppState>, query: HashMap<Stri
         conditions.extend(c);
         params.extend(p);
     }
+    if query.contains_key("object-contain") {
+        let object_contain = query.get("object-contain").unwrap();
+        let (c, p) = object_contain_builder(object_contain.split(",").collect::<Vec<&str>>().as_slice());
+        conditions.extend(c);
+        params.extend(p);
+    }
+    if query.contains_key("array-contain") {
+        let array_contain = query.get("array-contain").unwrap();
+        let (c, p) = array_contain_builder(array_contain.split(",").collect::<Vec<&str>>().as_slice());
+        conditions.extend(c);
+        params.extend(p);
+    }
+    if query.contains_key("like") {
+        let like = query.get("like").unwrap();
+        let (c, p) = like_builder(like.split(",").collect::<Vec<&str>>().as_slice());
+        conditions.extend(c);
+        params.extend(p);
+    }
+    if query.contains_key("object-like") {
+        let object_like = query.get("object-like").unwrap();
+        let (c, p) = object_like_builder(object_like.split(",").collect::<Vec<&str>>().as_slice());
+        conditions.extend(c);
+        params.extend(p);
+    }
+    if query.contains_key("in") {
+        let in_ = query.get("in").unwrap();
+        let (c, p) = in_builder(in_.split(",").collect::<Vec<&str>>().as_slice());
+        conditions.extend(c);
+        params.extend(p);
+    }
+    if query.contains_key("lesser") {
+        let lesser = query.get("lesser").unwrap();
+        let (c, p) = lesser_builder(lesser.split(",").collect::<Vec<&str>>().as_slice());
+        conditions.extend(c);
+        params.extend(p);
+    }
+    if query.contains_key("greater") {
+        let greater = query.get("greater").unwrap();
+        let (c, p) = greater_builder(greater.split(",").collect::<Vec<&str>>().as_slice());
+        conditions.extend(c);
+        params.extend(p);
+    }
     if conditions.len() > 0 {
         q.push_str(&format!(" where {}", conditions.join(" and ")));
     }
     q.push_str(&format!(" order by {} desc", "id"));
     q.push_str(&format!(" limit {}, {}", "0", "10"));
-    print!("{}\n", q);
     let mut query = sqlx::query(&q);
     for param in &params {
         query = query.bind(param);
     }
     let result = query.fetch_all(&app_data.db).await;
-    match result {
-        Ok(rows) => {
-            let events: Result<Vec<Event>, sqlx::Error> = rows
-                .iter()
-                .map(|row| {
-                    Ok(Event {
-                        id: row.get::<i64, _>("id"),
-                        relation_id: row.get::<i64, _>("relation_id"),
-                        reference_id: row.get::<i64, _>("reference_id"),
-                        tags: row.get::<String, _>("tags"),
-                        detail: row.get::<String, _>("detail"),
-                        time: row.get::<String, _>("time"),
-                        _id: row.get::<i64, _>("id").to_string(),
-                        _relation_id: row.get::<i64, _>("relation_id").to_string(),
-                        _reference_id: row.get::<i64, _>("reference_id").to_string(),
-                    })
-                })
-                .collect();
-            match events {
-                Ok(events) => HttpResponse::Ok().json(events),
-                Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
-            }
-        }
-        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
-    }
-}
-
-pub async fn get_event(app_data: web::Data<AppState>, req: HttpRequest) -> impl Responder {
-    print!("{} {}\n", req.method().to_string(), req.uri().to_string());
-
-    let result: Result<Vec<sqlx::mysql::MySqlRow>, sqlx::Error> = sqlx::query(
-        r#"
-        select id
-            , relation_id
-            , reference_id
-            , json_unquote(tags) tags
-            , json_unquote(detail) detail
-            , date_format(time, '%Y-%m-%d %H:%i:%s') time
-        from events
-        "#,
-    )
-        .fetch_all(&app_data.db)
-        .await;
-
     match result {
         Ok(rows) => {
             let events: Result<Vec<Event>, sqlx::Error> = rows

@@ -61,8 +61,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(web::Data::new(AppState { db: pool.clone() }))
             .route("/", web::get().to(index))
-            .route("/crate-api/event", web::get().to(event::get_event))
-            .route("/crate-api/event/test", web::get().to(event::retrieve_event))
+            .route("/crate-api/event", web::get().to(event::endpoint_event_get))
     })
     .bind((server_address, server_port))?
     .run()
