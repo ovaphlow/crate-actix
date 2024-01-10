@@ -129,7 +129,9 @@ async fn filter_event_default(app_data: web::Data<AppState>, query: HashMap<Stri
                 })
                 .collect();
             match events {
-                Ok(events) => HttpResponse::Ok().json(events),
+                Ok(events) => HttpResponse::Ok()
+                    .append_header((crate::constants::HEADER_API_VERSION, "2024-01-06"))
+                    .json(events),
                 Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
             }
         }
