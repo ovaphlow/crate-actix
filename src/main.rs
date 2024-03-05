@@ -1,6 +1,7 @@
 mod condition_builder;
 mod constants;
 mod event;
+mod subscriber;
 
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use dotenv::dotenv;
